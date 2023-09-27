@@ -11,7 +11,7 @@
 # 	monthly minimum, maximum, and average
 # 	discrete values for each hour of the year.
 # Trap input errors
-# Create file object using with for auto closing.
+# Create file object using "with" for auto closing.
 # Use file object to create 2D list of file contents
 # Filter contents list down to the user selected data category
 # Create chart - Learn how to do later
