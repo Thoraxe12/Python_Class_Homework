@@ -1,21 +1,21 @@
-# Get all files in current input dir            ---DONE---
-# Filter files down to only TMY3 files          ---DONE---
-# Ask user which file                           ---DONE---
-# Trap input errors                             ---DONE---
-# Create file object with valid input           ---Bad Way To Do It---
-# Create an enum with all the data categories   ---DONE---
+# Get all files in current input dir                                ---DONE---
+# Filter files down to only TMY3 files                              ---DONE---
+# Ask user which file                                               ---DONE---
+# Trap input errors                                                 ---DONE---
+# Create file object with valid input                               ---Bad Way To Do It---
+# Create an enum with all the data categories                       ---DONE---
 # Give the user a selection among (at a minimum): dry bulb temperature, humidity,
 # global horizontal irradiation(GHI), direct normal Irradiance(DNI),
-# dew point temperature, and wind speed         ---DONE---
-# Ask the user if they would like to plot       ---DONE---
+# dew point temperature, and wind                                   ---DONE---
+# Ask the user if they would like to plot                           ---DONE---
 #   scatter chart by hour of the day
 # 	monthly minimum, maximum, and average
 # 	discrete values for each hour of the year.
-# Trap input errors                             ---DONE---
-# Create file object using "with" for auto closing.
-# Use file object to create 2D list of file contents
-# Filter contents list down to the user selected data category
-# Create chart - Learn how to do later
+# Trap input errors                                                 ---DONE---
+# Create file object using "with" for auto closing.                 ---DONE---
+# Use file object to create 2D list of file contents                ---DONE---
+# Filter contents list down to the user selected data category      ---DONE---
+# Create chart - Learn how to do now
 import csv
 # From TMY3 manual:
 # The 12 selected typical months for each station were chosen using statistics determined by
@@ -27,8 +27,8 @@ import os
 from enum import Enum
 from typing import List
 
-DATA_CATEGORIES = ["dry bulb temperature", "humidity", "global horizontal irradiation",
-                   "direct normal Irradiance", "dew point temperature", "wind speed"]
+DATA_CATEGORIES = ["Dry Bulb Temperature", "Humidity", "Global Horizontal Irradiation",
+                   "Direct Normal Irradiance", "Dew Point Temperature", "Wind Speed"]
 DATA_CATEGORIES_LEN = len(DATA_CATEGORIES)
 
 
@@ -41,7 +41,7 @@ class DataCategoriesEnum(Enum):
     GHI = 3
     DNI = 4
     DPT = 5
-    WP = 6
+    WS = 6
 
 
 class ChartTypeEnum(Enum):
@@ -61,9 +61,10 @@ def getFilteredFiles() -> List[str]:
     return list(filter(lambda file: file.find(".CSV") != -1, allFiles))
 
 
-def getFileChoice(files: List[str]) -> int:
+def getFileChoice(files: List[str]) -> str:
     # Print all filenames with index in front of filename for user choice.
     # Out of Loop because files can be to max source size of 1020. This is too many operations to repeat.
+    print()
     for i, file in enumerate(files):
         print("{}: {}".format(i + 1, file))
 
@@ -85,10 +86,11 @@ def getFileChoice(files: List[str]) -> int:
             continue
 
         # No need for an else branch
-        return userChoice - 1
+        return files[userChoice - 1]
 
 
 def getDataChoice() -> DataCategoriesEnum:
+    print()
     for i, category in enumerate(DATA_CATEGORIES):
         print("{}: {}".format(i + 1, category))
 
@@ -113,7 +115,7 @@ def getDataChoice() -> DataCategoriesEnum:
             case 5:
                 return DataCategoriesEnum.DPT
             case 6:
-                return DataCategoriesEnum.WP
+                return DataCategoriesEnum.WS
             case _:
                 print("Error! Please enter a number between 1 - {}: ".format(DATA_CATEGORIES_LEN))
 
@@ -125,7 +127,7 @@ def getChartType() -> ChartTypeEnum:
     # 	discrete values for each hour of the year.
 
     while True:
-        print("How would you like to plot?\n"
+        print("\nHow would you like to plot?\n"
               "1. Scatter chart by hour of the day\n"
               "2. Monthly minimum, maximum, and average\n"
               "3. Discrete values for each hour of the year")
@@ -154,10 +156,7 @@ def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> List[str]:
     # GHI = 4
     # DNI = 7
     # Dew Point Temp = 34
-    # Wind speed = 47
-
-    # dry bulb temperature, humidity, and global horizontal irradiation(GHI)
-    # direct normal Irradiance(DNI), dew point temperature, and wind speed
+    # Wind speed = 46
 
     data = []
     with open(file, "r") as file:
@@ -167,7 +166,21 @@ def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> List[str]:
             if i == 0 or i == 1:
                 continue
 
-            data.append(row[31])
+            match dataCat:
+                case DataCategoriesEnum.DBT:
+                    rowIndex = 31
+                case DataCategoriesEnum.HUMIDITY:
+                    rowIndex = 37
+                case DataCategoriesEnum.GHI:
+                    rowIndex = 4
+                case DataCategoriesEnum.DNI:
+                    rowIndex = 7
+                case DataCategoriesEnum.DPT:
+                    rowIndex = 34
+                case DataCategoriesEnum.WS:
+                    rowIndex = 46
+
+            data.append(row[rowIndex])
 
     return data
 
@@ -179,9 +192,9 @@ def main() -> None:
 
 
 def driver() -> None:
-    # print(getDataChoice())
-    # print(getChartType())
-    print(getDataFromFile("700197TYA.CSV", DataCategoriesEnum.WP))
+    dataChoice = getDataChoice()
+    file = getFileChoice(getFilteredFiles())
+    print(getDataFromFile(file, dataChoice))
 
 
 driver()
