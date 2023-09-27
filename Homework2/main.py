@@ -1,31 +1,31 @@
-# Get all files in current input dir    ---DONE---
-# Filter files down to only TMY3 files  ---DONE---
-# Ask user which file                   ---DONE---
-# Trap input errors                     ---DONE---
-# Create file object with valid input   ---Bad Way To Do It---
-# Create an enum with all the data categories  ---DONE---
-# Give the user a selection among (at a minimum): dry bulb temperature, humidity, and global horizontal irradiation(GHI)
-# direct normal Irradiance(DNI), dew point temperature, and wind speed
-# Ask the user if they would like to plot:
+# Get all files in current input dir            ---DONE---
+# Filter files down to only TMY3 files          ---DONE---
+# Ask user which file                           ---DONE---
+# Trap input errors                             ---DONE---
+# Create file object with valid input           ---Bad Way To Do It---
+# Create an enum with all the data categories   ---DONE---
+# Give the user a selection among (at a minimum): dry bulb temperature, humidity,
+# global horizontal irradiation(GHI), direct normal Irradiance(DNI),
+# dew point temperature, and wind speed         ---DONE---
+# Ask the user if they would like to plot       ---DONE---
 #   scatter chart by hour of the day
 # 	monthly minimum, maximum, and average
 # 	discrete values for each hour of the year.
-# Trap input errors
+# Trap input errors                             ---DONE---
 # Create file object using "with" for auto closing.
 # Use file object to create 2D list of file contents
 # Filter contents list down to the user selected data category
 # Create chart - Learn how to do later
-
+import csv
 # From TMY3 manual:
 # The 12 selected typical months for each station were chosen using statistics determined by
 # considering five elements: global horizontal radiation, direct normal radiation, dry bulb
 # temperature, dew point temperature, and wind speed. These elements are considered the most
 # important for simulating solar energy conversion systems and building systems.
 
-import csv
-from typing import List
-from enum import Enum
 import os
+from enum import Enum
+from typing import List
 
 DATA_CATEGORIES = ["dry bulb temperature", "humidity", "global horizontal irradiation",
                    "direct normal Irradiance", "dew point temperature", "wind speed"]
@@ -42,6 +42,16 @@ class DataCategoriesEnum(Enum):
     DNI = 4
     DPT = 5
     WP = 6
+
+
+class ChartTypeEnum(Enum):
+    #   scatter chart by hour of the day
+    # 	monthly minimum, maximum, and average
+    # 	discrete values for each hour of the year.
+
+    ScatterChart = 1
+    MinMaxAvg = 2
+    DiscreteValues = 3
 
 
 def getFilteredFiles() -> List[str]:
@@ -78,7 +88,7 @@ def getFileChoice(files: List[str]) -> int:
         return userChoice - 1
 
 
-def getDataChoice() -> int:
+def getDataChoice() -> DataCategoriesEnum:
     for i, category in enumerate(DATA_CATEGORIES):
         print("{}: {}".format(i + 1, category))
 
@@ -90,20 +100,88 @@ def getDataChoice() -> int:
             continue
 
         userChoice = int(userChoice)
-        if userChoice < 1 or userChoice > DATA_CATEGORIES_LEN:
-            print("Error! Please enter a number between 1 - {}: ".format(DATA_CATEGORIES_LEN))
+
+        match userChoice:
+            case 1:
+                return DataCategoriesEnum.DBT
+            case 2:
+                return DataCategoriesEnum.HUMIDITY
+            case 3:
+                return DataCategoriesEnum.GHI
+            case 4:
+                return DataCategoriesEnum.DNI
+            case 5:
+                return DataCategoriesEnum.DPT
+            case 6:
+                return DataCategoriesEnum.WP
+            case _:
+                print("Error! Please enter a number between 1 - {}: ".format(DATA_CATEGORIES_LEN))
+
+
+def getChartType() -> ChartTypeEnum:
+    # Ask the user if they would like to plot
+    #   scatter chart by hour of the day
+    # 	monthly minimum, maximum, and average
+    # 	discrete values for each hour of the year.
+
+    while True:
+        print("How would you like to plot?\n"
+              "1. Scatter chart by hour of the day\n"
+              "2. Monthly minimum, maximum, and average\n"
+              "3. Discrete values for each hour of the year")
+        userInput = input("Enter a number between 1 - 3: ")
+
+        if not userInput.isdigit():
+            print("Error! Please enter numbers only.\n")
             continue
 
-        return userChoice
+        userInput = int(userInput)
+
+        match userInput:
+            case 1:
+                return ChartTypeEnum.ScatterChart
+            case 2:
+                return ChartTypeEnum.MinMaxAvg
+            case 3:
+                return ChartTypeEnum.DiscreteValues
+            case _:
+                print("Error! Please enter numbers only.\n")
+
+
+def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> List[str]:
+    # DBT = index 31
+    # Humidity = 37
+    # GHI = 4
+    # DNI = 7
+    # Dew Point Temp = 34
+    # Wind speed = 47
+
+    # dry bulb temperature, humidity, and global horizontal irradiation(GHI)
+    # direct normal Irradiance(DNI), dew point temperature, and wind speed
+
+    data = []
+    with open(file, "r") as file:
+        reader = csv.reader(file)
+
+        for i, row in enumerate(reader):
+            if i == 0 or i == 1:
+                continue
+
+            data.append(row[31])
+
+    return data
 
 
 def main() -> None:
     files = getFilteredFiles()
     fileIndex = getFileChoice(files)
+    dataChoiceEnum = getDataChoice()
 
 
 def driver() -> None:
-    print(getDataChoice())
+    # print(getDataChoice())
+    # print(getChartType())
+    print(getDataFromFile("700197TYA.CSV", DataCategoriesEnum.WP))
 
 
 driver()
