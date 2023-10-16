@@ -1,31 +1,10 @@
-# Get all files in current input dir                                ---DONE---
-# Filter files down to only TMY3 files                              ---DONE---
-# Ask user which file                                               ---DONE---
-# Trap input errors                                                 ---DONE---
-# Create file object with valid input                               ---Bad Way To Do It---
-# Create an enum with all the data categories                       ---DONE---
-# Give the user a selection among (at a minimum): dry bulb temperature, humidity,
-# global horizontal irradiation(GHI), direct normal Irradiance(DNI),
-# dew point temperature, and wind                                   ---DONE---
-# Ask the user if they would like to plot                           ---DONE---
-#   scatter chart by hour of the day
-# 	monthly minimum, maximum, and average
-# 	discrete values for each hour of the year.
-# Trap input errors                                                 ---DONE---
-# Create file object using "with" for auto closing.                 ---DONE---
-# Use file object to create 2D list of file contents                ---DONE---
-# Filter contents list down to the user selected data category      ---DONE---
-# Create chart - Learn how to do now
 import csv
-# From TMY3 manual:
-# The 12 selected typical months for each station were chosen using statistics determined by
-# considering five elements: global horizontal radiation, direct normal radiation, dry bulb
-# temperature, dew point temperature, and wind speed. These elements are considered the most
-# important for simulating solar energy conversion systems and building systems.
-
 import os
 from enum import Enum
-from typing import List
+from typing import List, Tuple
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 DATA_CATEGORIES = ["Dry Bulb Temperature", "Humidity", "Global Horizontal Irradiation",
                    "Direct Normal Irradiance", "Dew Point Temperature", "Wind Speed"]
@@ -64,9 +43,11 @@ def getFilteredFiles() -> List[str]:
 def getFileChoice(files: List[str]) -> str:
     # Print all filenames with index in front of filename for user choice.
     # Out of Loop because files can be to max source size of 1020. This is too many operations to repeat.
-    print()
-    for i, file in enumerate(files):
-        print("{}: {}".format(i + 1, file))
+    print()  # Print a new line to make things cleaner
+    i = 1
+    for file in files:
+        print("{}: {}".format(i, file))
+        i += 1
 
     # Main func loop
     while True:
@@ -91,8 +72,10 @@ def getFileChoice(files: List[str]) -> str:
 
 def getDataChoice() -> DataCategoriesEnum:
     print()
-    for i, category in enumerate(DATA_CATEGORIES):
-        print("{}: {}".format(i + 1, category))
+    i = 1
+    for category in DATA_CATEGORIES:
+        print("{}: {}".format(i, category))
+        i += 1
 
     while True:
         userChoice = input("Enter a number between 1 - {}: ".format(DATA_CATEGORIES_LEN))
@@ -150,7 +133,7 @@ def getChartType() -> ChartTypeEnum:
                 print("Error! Please enter numbers only.\n")
 
 
-def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> List[str]:
+def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> Tuple[List[str], List[float], List[str]]:
     # DBT = index 31
     # Humidity = 37
     # GHI = 4
@@ -158,43 +141,156 @@ def getDataFromFile(file: str, dataCat: DataCategoriesEnum) -> List[str]:
     # Dew Point Temp = 34
     # Wind speed = 46
 
+    date = []
+    time = []
     data = []
     with open(file, "r") as file:
         reader = csv.reader(file)
+        rowIndex = 0
+        match dataCat:
+            case DataCategoriesEnum.DBT:
+                rowIndex = 31
+            case DataCategoriesEnum.HUMIDITY:
+                rowIndex = 37
+            case DataCategoriesEnum.GHI:
+                rowIndex = 4
+            case DataCategoriesEnum.DNI:
+                rowIndex = 7
+            case DataCategoriesEnum.DPT:
+                rowIndex = 34
+            case DataCategoriesEnum.WS:
+                rowIndex = 46
 
         for i, row in enumerate(reader):
             if i == 0 or i == 1:
                 continue
 
-            match dataCat:
-                case DataCategoriesEnum.DBT:
-                    rowIndex = 31
-                case DataCategoriesEnum.HUMIDITY:
-                    rowIndex = 37
-                case DataCategoriesEnum.GHI:
-                    rowIndex = 4
-                case DataCategoriesEnum.DNI:
-                    rowIndex = 7
-                case DataCategoriesEnum.DPT:
-                    rowIndex = 34
-                case DataCategoriesEnum.WS:
-                    rowIndex = 46
+            time.append(row[1][0:2])
+            data.append(float(row[rowIndex]))
+            date.append(row[0])
 
-            data.append(row[rowIndex])
+    return time, data, date
 
-    return data
+
+def convertMonthIntToString(monthNumber: int) -> str:
+    match monthNumber:
+        case 1:
+            return "Jan"
+        case 2:
+            return "Feb"
+        case 3:
+            return "Mar"
+        case 4:
+            return "Apr"
+        case 5:
+            return "May"
+        case 6:
+            return "Jun"
+        case 7:
+            return "Jul"
+        case 8:
+            return "Aug"
+        case 9:
+            return "Sep"
+        case 10:
+            return "Oct"
+        case 11:
+            return "Nov"
+        case 12:
+            return "Dec"
+
+
+def createScatterChart(dataList: List[float], timeList: List[str]) -> None:
+    plt.scatter(timeList, dataList)
+    plt.show()
+
+
+def processToMinMaxAvgData(dataList: List[float], dateList: List[str]) -> Tuple[List[List[float]], List[str]]:
+    minList = []
+    maxList = []
+    avgList = []
+    monthTempList = []
+    allDataList = []
+    timeList = []
+
+    currentMonth = dateList[0][0:2]
+    for i, data in enumerate(dataList):
+        if dateList[i][0:2] != currentMonth:
+            currentMonth = dateList[i][0:2]
+            timeList.append(convertMonthIntToString(int(currentMonth)))
+
+            minNumber = min(monthTempList)
+            maxNumber = max(monthTempList)
+            avgNumber = sum(monthTempList) / len(monthTempList)
+
+            minList.append(minNumber)
+            maxList.append(maxNumber)
+            avgList.append(avgNumber)
+
+        monthTempList.append(data)
+
+    allDataList.append(minList)
+    allDataList.append(maxList)
+    allDataList.append(avgList)
+
+    return allDataList, timeList
+
+
+def createMinMaxAvgChart(dataList: List[float], dateList: List[str]) -> None:
+    (formattedDataList, timeList) = processToMinMaxAvgData(dataList, dateList)
+    minList = formattedDataList[0]
+    maxList = formattedDataList[1]
+    avgList = formattedDataList[2]
+
+    plt.plot(timeList, minList)
+    plt.plot(timeList, maxList)
+    plt.plot(timeList, avgList)
+    plt.show()
+
+
+# Discrete values for each hour of the year.
+# Convert data into discrete via rounding
+# Get data of the year in file and push the data into a dictionary
+def processToDiscreteData(dataList: List[float], timeList: List[str]) -> tuple[dict[str, list[float]], list[str]]:
+    uniqueHoursList = []
+    for hour in timeList:
+        if hour not in uniqueHoursList:
+            uniqueHoursList.append(hour)
+
+    dataByHour = {}
+    for i in range(len(timeList)):
+        hour = timeList[i]
+        temperature = dataList[i]
+        if hour in dataByHour:
+            dataByHour[hour].append(temperature)
+        else:
+            dataByHour[hour] = [temperature]
+
+    return dataByHour, uniqueHoursList
+
+
+def createDiscreteChart(dataList: List[float], timeList: List[str]) -> None:
+    dataList, timeList = processToDiscreteData(dataList, timeList)
+
+    plt.bar(timeList, [np.mean(dataList[hour]) for hour in timeList])
+    plt.show()
 
 
 def main() -> None:
     files = getFilteredFiles()
-    fileIndex = getFileChoice(files)
+    fileName = getFileChoice(files)
     dataChoiceEnum = getDataChoice()
+    chartType = getChartType()
+
+    (timeList, dataList, dateList) = getDataFromFile(fileName, dataChoiceEnum)
+
+    match chartType:
+        case ChartTypeEnum.ScatterChart:
+            createScatterChart(dataList, timeList)
+        case ChartTypeEnum.MinMaxAvg:
+            createMinMaxAvgChart(dataList, dateList)
+        case ChartTypeEnum.DiscreteValues:
+            createDiscreteChart(dataList, timeList)
 
 
-def driver() -> None:
-    dataChoice = getDataChoice()
-    file = getFileChoice(getFilteredFiles())
-    print(getDataFromFile(file, dataChoice))
-
-
-driver()
+main()
