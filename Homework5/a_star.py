@@ -1,8 +1,11 @@
 from enum import Enum
+from heapq import heappush, heappop
 from typing import Any
 
 import numpy as np
 from PIL.Image import Image
+
+# TODO: Try using the heapq module to implement a priority queue,
 
 # Following timings are using the "50x50 maze" map
 
@@ -11,9 +14,10 @@ from PIL.Image import Image
 # Prior times were with float32
 
 # Moving to 64bit float reduced runtime in range of 0.4-1.0 seconds
-node_dtype = np.dtype([("x", np.int32), ("y", np.int32), ("wall", np.bool_),
-                       ("g_value", np.float64), ("h_value", np.float64), ("f_value", np.float64),
-                       ("px", np.int32), ("py", np.int32), ("list", np.int32)])
+# Moving the float to int32 reduced runtime in range of 0.7-0.9 seconds
+node_dtype = [("x", np.int32, ()), ("y", np.int32, ()), ("wall", np.bool_, ()),
+              ("g_value", np.int32, ()), ("h_value", np.int32, ()), ("f_value", np.int32, ()),
+              ("px", np.int32, ()), ("py", np.int32, ()), ("list", np.int32, ())]
 
 
 class ListEnum(Enum):
@@ -92,11 +96,11 @@ def find_index(open_list: list[node_dtype], f_value: np.int32) -> int:
 
 
 def a_star(start: tuple[int, int], end: tuple[int, int], map_grid: np.ndarray) -> list[tuple[int, int]] | None:
-    open_list = [map_grid[start[0]][start[1]]]
+    open_list = []
+    heappush(open_list, (0, map_grid[start[0]][start[1]]))
 
     while len(open_list) > 0:
-        current_node = open_list[0]
-        open_list = open_list[1:]
+        current_node = heappop(open_list)[1]
         current_node['list'] = ListEnum.CLOSED.value
 
         if current_node['x'] == end[0] and current_node['y'] == end[1]:
@@ -128,10 +132,7 @@ def a_star(start: tuple[int, int], end: tuple[int, int], map_grid: np.ndarray) -
                 neighbor['px'] = current_node['x']
                 neighbor['py'] = current_node['y']
                 neighbor['list'] = ListEnum.OPEN.value
-                if len(open_list) == 0:
-                    open_list.append(neighbor)
-                else:
-                    open_list.insert(find_index(open_list, neighbor['f_value']), neighbor)
+                heappush(open_list, (neighbor['f_value'], neighbor))
 
     return None
 
